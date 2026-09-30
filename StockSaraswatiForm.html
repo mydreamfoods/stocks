@@ -1,0 +1,1096 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Production Planning — Saraswati</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root {
+    --bg:        #f5f7fa;
+    --surface:   #ffffff;
+    --surface2:  #f0f2f5;
+    --border:    #dde1e8;
+    --border2:   #bcc2cc;
+    --accent:    #2563eb;
+    --accent-h:  #1d4ed8;
+    --accent-s:  #eff4ff;
+    --accent-r:  rgba(37,99,235,0.08);
+    --green:     #16a34a;
+    --green-s:   #f0fdf4;
+    --text:      #111827;
+    --muted:     #6b7280;
+    --label:     #374151;
+    --error:     #dc2626;
+    --shadow:    0 1px 3px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04);
+    --shadow-lg: 0 8px 32px rgba(0,0,0,0.12);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    font-family: 'Outfit', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── Header ── */
+  .header {
+    background: #fff;
+    border-bottom: 1px solid var(--border);
+    padding: 0 32px;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+    position: sticky; top: 0; z-index: 50;
+  }
+  .header-mark {
+    width: 32px; height: 32px;
+    background: var(--accent);
+    border-radius: 8px;
+    display: grid; place-items: center;
+    font-size: 16px;
+    flex-shrink: 0;
+  }
+  .header h1 { font-size: 15px; font-weight: 600; color: var(--text); }
+  .header p  { font-size: 11.5px; color: var(--muted); margin-top: 1px; }
+  .header-pill {
+    margin-left: auto;
+    background: var(--accent-s);
+    border: 1px solid rgba(37,99,235,0.2);
+    color: var(--accent);
+    font-size: 11px; font-weight: 600;
+    padding: 4px 10px; border-radius: 20px;
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 0.04em;
+  }
+
+  /* ── Layout ── */
+  .container {
+    max-width: 760px;
+    margin: 32px auto;
+    padding: 0 20px 120px;
+  }
+
+  /* ── Card ── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 26px;
+    margin-bottom: 12px;
+    box-shadow: var(--shadow);
+  }
+  .card-head {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 10.5px; font-weight: 700;
+    letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 20px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--border);
+  }
+  .card-head-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+  }
+  .card-head-badge {
+    margin-left: auto;
+    font-size: 10.5px; font-weight: 700;
+    letter-spacing: 0.04em; text-transform: none;
+    padding: 3px 9px; border-radius: 20px;
+    background: var(--accent-s); color: var(--accent);
+    border: 1px solid rgba(37,99,235,0.2);
+  }
+
+  /* ── Grid ── */
+  .g3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+  .g2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+  /* ── Field ── */
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  .field label {
+    font-size: 12px; font-weight: 500;
+    color: var(--label);
+  }
+  .field label .req { color: var(--accent); margin-left: 2px; }
+
+  input, select {
+    appearance: none; -webkit-appearance: none;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 9px;
+    padding: 10px 13px;
+    font-size: 13.5px;
+    font-family: 'Outfit', sans-serif;
+    outline: none;
+    width: 100%;
+    transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+  }
+  input:focus, select:focus {
+    border-color: var(--accent);
+    background: #fff;
+    box-shadow: 0 0 0 3px var(--accent-r);
+  }
+  select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 12 12'%3E%3Cpath fill='%236b7280' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 32px;
+    cursor: pointer;
+  }
+  select:disabled { opacity: 0.4; cursor: not-allowed; }
+  input[type="date"]::-webkit-calendar-picker-indicator { opacity: 0.5; cursor: pointer; }
+  input[type="file"] {
+    padding: 9px 10px;
+    cursor: pointer;
+  }
+  input[type="file"]::file-selector-button {
+    background: var(--accent); color: #fff; border: none;
+    border-radius: 7px; padding: 7px 14px;
+    font-family: 'Outfit', sans-serif; font-size: 12.5px; font-weight: 600;
+    cursor: pointer; margin-right: 10px;
+  }
+
+  /* ── Banners ── */
+  .banner {
+    display: flex; align-items: center; gap: 10px;
+    border-radius: 10px; padding: 11px 15px;
+    font-size: 13px; margin-bottom: 12px;
+  }
+  .banner-load { background: #fffbeb; border: 1px solid #fde68a; color: #92400e; }
+  .banner-err  { background: #fef2f2; border: 1px solid #fecaca; color: var(--error); display: none; }
+  .banner-warn { background: #fff7ed; border: 1px solid #fed7aa; color: #9a3412; display: none; }
+  .spinner {
+    width: 14px; height: 14px;
+    border: 2px solid #fde68a; border-top-color: #d97706;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite; flex-shrink: 0;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .retry-btn {
+    margin-left: auto;
+    background: #fff; border: 1px solid var(--error);
+    color: var(--error); font-size: 12px; font-weight: 500;
+    padding: 4px 11px; border-radius: 6px;
+    cursor: pointer; font-family: 'Outfit', sans-serif;
+  }
+  .retry-btn:hover { background: #fef2f2; }
+
+  /* ── Buttons ── */
+  .btn-row {
+    display: flex; justify-content: flex-end; gap: 10px;
+    margin-top: 20px;
+  }
+  .btn-clear {
+    padding: 10px 20px; border-radius: 9px;
+    border: 1px solid var(--border2); background: var(--surface);
+    color: var(--muted); font-size: 13.5px; font-weight: 500;
+    font-family: 'Outfit', sans-serif; cursor: pointer;
+    transition: all 0.15s;
+  }
+  .btn-clear:hover { background: var(--surface2); color: var(--text); }
+  .btn-submit {
+    padding: 10px 28px; border-radius: 9px; border: none;
+    background: var(--accent); color: #fff;
+    font-size: 13.5px; font-weight: 600;
+    font-family: 'Outfit', sans-serif; cursor: pointer;
+    display: flex; align-items: center; gap: 8px;
+    box-shadow: 0 2px 8px rgba(37,99,235,0.28);
+    transition: background 0.15s, transform 0.1s, box-shadow 0.15s;
+  }
+  .btn-submit:hover { background: var(--accent-h); box-shadow: 0 4px 14px rgba(37,99,235,0.36); }
+  .btn-submit:active { transform: scale(0.98); }
+  .btn-submit:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+
+  /* ── Toast ── */
+  #toast {
+    position: fixed; bottom: 28px; left: 50%;
+    transform: translateX(-50%) translateY(90px);
+    padding: 12px 20px; border-radius: 10px;
+    font-size: 13.5px; font-weight: 500;
+    display: flex; align-items: center; gap: 9px;
+    box-shadow: var(--shadow-lg);
+    transition: transform 0.35s cubic-bezier(.34,1.56,.64,1), opacity 0.25s;
+    opacity: 0; z-index: 999; min-width: 210px;
+    color: #fff;
+  }
+  #toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+  #toast.success { background: var(--green); }
+  #toast.fail    { background: var(--error); }
+
+  /* ── Filter row ── */
+  .filter-row { display: grid; grid-template-columns: 1fr 180px; gap: 10px; margin-bottom: 16px; }
+  .filter-row input, .filter-row select { background: var(--surface2); }
+
+  /* ── Product table ── */
+  .ptable-wrap {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  table.ptable { width: 100%; border-collapse: collapse; }
+  table.ptable thead th {
+    background: var(--surface2);
+    font-size: 10.5px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.06em;
+    color: var(--muted);
+    text-align: left;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; z-index: 5;
+    box-shadow: 0 1px 0 var(--border);
+  }
+  table.ptable thead th.col-qty { text-align: center; width: 130px; }
+  table.ptable thead th.col-avail { text-align: center; width: 90px; }
+  table.ptable tbody td {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+    font-size: 13.5px;
+    vertical-align: middle;
+  }
+  table.ptable tbody tr:last-child td { border-bottom: none; }
+  table.ptable tbody tr:hover { background: var(--accent-s); }
+  table.ptable tbody tr.has-qty { background: var(--green-s); }
+  table.ptable tbody tr.has-qty:hover { background: #e6faec; }
+  .ptable-scroll { max-height: 480px; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+  .p-segment { font-size: 11px; color: var(--muted); }
+  .p-name { font-weight: 500; color: var(--text); word-break: break-word; }
+  .p-avail {
+    text-align: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12.5px; font-weight: 600;
+    color: var(--accent);
+  }
+  .p-avail.zero { color: var(--muted); }
+  .qty-input {
+    width: 100%;
+    text-align: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    font-weight: 500;
+    padding: 7px 8px;
+  }
+  .qty-input.over-limit { border-color: var(--error); background: #fef2f2; color: var(--error); }
+  .ptable-empty { padding: 30px; text-align: center; color: var(--muted); font-size: 13px; }
+
+  /* ── Sticky footer summary ── */
+  .summary-bar {
+    position: sticky; bottom: 0;
+    background: #fff;
+    border-top: 1px solid var(--border);
+    padding: 14px 16px;
+    display: flex; align-items: center; justify-content: space-between;
+    margin-top: 0;
+  }
+  .summary-count { font-size: 12.5px; color: var(--muted); }
+  .summary-total {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 16px; font-weight: 700; color: var(--text);
+  }
+  .summary-total span { color: var(--accent); }
+
+  @media (max-width: 640px) {
+    .g3, .g2, .filter-row { grid-template-columns: 1fr; }
+    .header { padding: 0 14px; height: 50px; }
+    .header h1 { font-size: 14px; }
+    .header p  { font-size: 10.5px; }
+    .container { margin: 14px auto; padding: 0 12px 130px; }
+    .card { padding: 14px; border-radius: 12px; }
+    .card-head { font-size: 10px; margin-bottom: 14px; padding-bottom: 10px; }
+    .header-pill { display: none; }
+    .ptable-scroll { max-height: 56vh; }
+    table.ptable thead th { padding: 9px 8px; font-size: 9.5px; }
+    table.ptable tbody td { padding: 7px 8px; font-size: 13px; }
+    table.ptable thead th.col-avail { width: 56px; }
+    table.ptable thead th.col-qty { width: 84px; }
+    .qty-input { padding: 8px 4px; font-size: 14px; }
+    .p-name { font-size: 13px; }
+    .summary-bar { padding: 12px 14px; flex-wrap: wrap; gap: 6px; }
+    .summary-total { font-size: 14.5px; }
+    .btn-row { flex-direction: column-reverse; gap: 8px; }
+    .btn-row .btn-clear, .btn-row .btn-submit { width: 100%; justify-content: center; }
+  }
+
+  @media (max-width: 360px) {
+    table.ptable thead th.col-avail { width: 46px; }
+    table.ptable thead th.col-qty { width: 74px; }
+    table.ptable thead th, table.ptable tbody td { padding-left: 6px; padding-right: 6px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-mark">🏭</div>
+  <div>
+    <h1>Production Planning</h1>
+    <p>Saraswati</p>
+  </div>
+  <span class="header-pill" id="entryTypePill" style="display:none;">ENTRY FORM</span>
+</div>
+
+<div class="container">
+
+  <div class="banner banner-load" id="loadBanner">
+    <div class="spinner"></div>
+    <span id="loadMsg">Loading data…</span>
+  </div>
+  <div class="banner banner-err" id="errBanner">
+    <span id="errMsg">⚠ Failed to load</span>
+    <button class="retry-btn" onclick="init()">↺ Retry</button>
+  </div>
+  <div class="banner banner-warn" id="warnBanner">
+    <span id="warnMsg"></span>
+  </div>
+
+  <form id="form" novalidate>
+
+    <!-- Submission Details -->
+    <div class="card">
+      <div class="card-head"><span class="card-head-dot"></span> Submission Details</div>
+      <div class="g3">
+        <div class="field">
+          <label>Date <span class="req">*</span></label>
+          <input type="date" id="date"/>
+        </div>
+        <div class="field" style="grid-column: span 2;">
+          <label>Name <span class="req">*</span></label>
+          <select id="name" onchange="onNameChange()">
+            <option value="">— Select Name —</option>
+          </select>
+        </div>
+      </div>
+      <input type="hidden" id="email"/>
+      <input type="hidden" id="department"/>
+    </div>
+
+    <!-- Upload Current Stock export → prefill Opening Stock (Opening Stock users only) -->
+    <div class="card" id="uploadCard" style="display:none;">
+      <div class="card-head"><span class="card-head-dot"></span> Upload Current Stock (prefill Opening Stock)</div>
+      <p style="font-size:12.5px;color:var(--muted);line-height:1.5;margin-bottom:12px;">
+        Upload the <strong>Excel or CSV</strong> file downloaded from the dashboard's Current Stock table — its
+        <strong>Current Stock</strong> column (yesterday's closing balance) is filled in below as
+        <strong>Opening Stock</strong> for the date above. Review the numbers before submitting — nothing
+        is saved until you press Submit. (PDF isn't accepted here since a PDF table can't be parsed reliably;
+        use the Excel or CSV export instead.)
+      </p>
+      <input type="file" id="openingStockUpload" accept=".xlsx,.xls,.xlsm,.csv,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" onchange="handleOpeningStockUpload(event)"/>
+      <div id="uploadStatus" style="font-size:12px;color:var(--muted);margin-top:9px;"></div>
+    </div>
+
+    <!-- Products table -->
+    <div class="card">
+      <div class="card-head">
+        <span class="card-head-dot"></span> Products &amp; Quantity
+        <span class="card-head-badge" id="stockRefreshBadge" style="display:none;cursor:pointer;" onclick="refreshStockOutStock()">↺ Refresh stock</span>
+      </div>
+
+      <div class="filter-row">
+        <input type="text" id="searchBox" placeholder="🔍 Search product…" oninput="renderProductTable()"/>
+        <select id="segmentFilter" onchange="renderProductTable()">
+          <option value="">All Segments</option>
+        </select>
+      </div>
+
+      <div class="ptable-wrap">
+        <div class="ptable-scroll">
+          <table class="ptable">
+            <thead>
+              <tr>
+                <th>Product</th>
+                <th class="col-avail" id="availHeader" style="display:none;">Avail</th>
+                <th class="col-qty">Quantity</th>
+              </tr>
+            </thead>
+            <tbody id="ptableBody">
+              <tr><td colspan="3"><div class="ptable-empty">Select your name to load products</div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="summary-bar">
+        <span class="summary-count" id="summaryCount">0 products selected</span>
+        <span class="summary-total">Total Quantity: <span id="summaryTotal">0</span></span>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button type="button" class="btn-clear" id="clearBtn" onclick="resetForm()">Clear All</button>
+      <button type="submit" class="btn-submit" id="submitBtn" disabled>
+        <span id="submitLabel">Submit Entry</span>
+      </button>
+    </div>
+
+  </form>
+</div>
+
+<div id="toast"><span id="toastIcon">✓</span><span id="toastMsg"></span></div>
+
+<script>
+  const GAS_URL = 'https://script.google.com/macros/s/AKfycbysvaI3EJL-WpjtCIFE6C1jWYyjKBIMqlMsM40K-S4HCJyE0rl0LV5FXOM9DW94LhsR/exec';
+
+  let allUsers    = [];
+  let allProducts = [];
+
+  // Default date
+  document.getElementById('date').value = new Date().toISOString().split('T')[0];
+
+  // Apps Script serves an HTML page instead of JSON in a few different
+  // situations, and they need different fixes, so sniff which one this is
+  // rather than always blaming the deployment's access setting (usually
+  // already correct):
+  //  - a Google account chooser / login page → genuinely a sign-in block
+  //  - Apps Script's own error page (an unhandled exception, or a stale
+  //    deployment — editing Code.gs does NOT go live until you deploy a
+  //    NEW VERSION) → the far more common cause in practice
+  //  - anything else → shown as-is so it can be diagnosed
+  function parseGasResponse(responseText) {
+    const trimmed = (responseText || '').trim();
+    if (/^<!DOCTYPE|^<html/i.test(trimmed)) {
+      if (/accounts\.google\.com|ServiceLogin|signin\/oauth/i.test(trimmed)) {
+        throw new Error('Blocked by Google sign-in — set the Apps Script deployment\'s "Who has access" to "Anyone" and redeploy.');
+      }
+      if (/we're sorry|a server error occurred|script function not found|exceeded maximum execution time/i.test(trimmed)) {
+        throw new Error('Apps Script error — the deployed script hit an error. Make sure it was redeployed as a New version after the last edit.');
+      }
+      throw new Error('Google returned a page instead of data — most likely Code.gs wasn\'t redeployed as a New version after the last edit.');
+    }
+    try {
+      return JSON.parse(trimmed);
+    } catch (e) {
+      throw new Error('Unexpected response: ' + trimmed.slice(0, 120));
+    }
+  }
+
+  // Timeout is generous (2 min) — a huge spreadsheet can genuinely take a
+  // while for Apps Script to read+serialize; that's slow, not broken.
+  function xhrGet(url, onSlow) {
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('GET', url, true);
+      xhr.timeout = 120000;
+      const slowTimer = setTimeout(() => { if (onSlow) onSlow(); }, 8000);
+      xhr.onload  = () => {
+        clearTimeout(slowTimer);
+        try { resolve(parseGasResponse(xhr.responseText)); }
+        catch(e) { reject(e); }
+      };
+      xhr.onerror   = () => { clearTimeout(slowTimer); reject(new Error('Network error')); };
+      xhr.ontimeout = () => { clearTimeout(slowTimer); reject(new Error('Server timed out — try again')); };
+      xhr.send();
+    });
+  }
+
+  async function safeFetch(url, retries = 3, onSlow) {
+    for (let i = 0; i < retries; i++) {
+      try {
+        const json = await xhrGet(url, onSlow);
+        if (json.success) return json;
+        throw new Error(json.error || 'Server error');
+      } catch (err) {
+        if (i === retries - 1) throw err;
+        const jitterMs = 1500 + Math.random() * 2000;
+        await new Promise(r => setTimeout(r, jitterMs));
+      }
+    }
+  }
+
+  // ── Local cache for Users & Products ──────────────────
+  const CACHE_TTL_MS = 15 * 60 * 1000; // 15 minutes
+
+  function readCache(key) {
+    try {
+      const raw = localStorage.getItem(key);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      if (!parsed || (Date.now() - parsed.savedAt) > CACHE_TTL_MS) return null;
+      return parsed.data;
+    } catch (e) { return null; }
+  }
+
+  function writeCache(key, data) {
+    try { localStorage.setItem(key, JSON.stringify({ savedAt: Date.now(), data })); }
+    catch (e) { /* storage full/unavailable — safe to ignore, just skips caching */ }
+  }
+
+  function escapeHtmlLocal(str) {
+    return String(str == null ? '' : str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+  }
+
+  function populateDropdowns() {
+    const nameSel = document.getElementById('name');
+    const curName = nameSel.value;
+    nameSel.innerHTML = '<option value="">— Select Name —</option>';
+    allUsers.forEach(u => {
+      const o = document.createElement('option');
+      o.value = o.textContent = u.name;
+      nameSel.appendChild(o);
+    });
+    if (curName && allUsers.some(u => u.name === curName)) nameSel.value = curName;
+
+    const curSeg = document.getElementById('segmentFilter').value;
+    const segs   = [...new Set(allProducts.map(p => p.segment))].sort();
+    const segSel = document.getElementById('segmentFilter');
+    segSel.innerHTML = '<option value="">All Segments</option>';
+    segs.forEach(s => {
+      const o = document.createElement('option');
+      o.value = o.textContent = s;
+      segSel.appendChild(o);
+    });
+    if (curSeg && segs.includes(curSeg)) segSel.value = curSeg;
+  }
+
+  async function refreshUsersAndProductsInBackground() {
+    try {
+      const [uJson, pJson] = await Promise.all([
+        safeFetch(`${GAS_URL}?action=getUsers`, 1),
+        safeFetch(`${GAS_URL}?action=getProducts`, 1)
+      ]);
+      allUsers    = uJson.users;
+      allProducts = pJson.products;
+      writeCache('sar_ppf_users_v1', allUsers);
+      writeCache('sar_ppf_products_v2', allProducts);
+      populateDropdowns();
+      renderProductTable();
+    } catch (e) { /* silent — the visible/cached data just stays as-is */ }
+  }
+
+  // ── Init: load users & products (cache-first) ─────────
+  async function init() {
+    const lb = document.getElementById('loadBanner');
+    const eb = document.getElementById('errBanner');
+    const lm = document.getElementById('loadMsg');
+    eb.style.display = 'none';
+
+    const cachedUsers    = readCache('sar_ppf_users_v1');
+    const cachedProducts = readCache('sar_ppf_products_v2');
+
+    if (cachedUsers && cachedProducts) {
+      allUsers    = cachedUsers;
+      allProducts = cachedProducts;
+      populateDropdowns();
+      lb.style.display = 'none';
+      refreshUsersAndProductsInBackground();
+      return;
+    }
+
+    lb.style.display = 'flex';
+    lm.textContent   = 'Loading…';
+    let slowStage = 0;
+    const onSlow = () => {
+      slowStage++;
+      lm.textContent = slowStage === 1
+        ? 'Still loading… this can take longer if several people are using the form right now'
+        : 'Still trying — the sheet is busy, hang tight';
+    };
+
+    try {
+      const [uJson, pJson] = await Promise.all([
+        safeFetch(`${GAS_URL}?action=getUsers`, 2, onSlow),
+        safeFetch(`${GAS_URL}?action=getProducts`, 2, onSlow)
+      ]);
+
+      allUsers    = uJson.users;
+      allProducts = pJson.products;
+      writeCache('sar_ppf_users_v1', allUsers);
+      writeCache('sar_ppf_products_v2', allProducts);
+      populateDropdowns();
+
+      lb.style.display = 'none';
+    } catch (err) {
+      lb.style.display = 'none';
+      eb.style.display = 'flex';
+      document.getElementById('errMsg').textContent = '⚠ ' + err.message;
+    }
+  }
+
+  // ── Stock Out-entry stock restriction ──────────────────────
+  // Each person's Entry Type (from the User sheet's Department column)
+  // decides which tab their submissions save to: Opening Stock, Stock Out
+  // or Stock In. When it's "Stock Out", the product list is narrowed to
+  // only products with stock left (per the "Current Stock" sheet — a
+  // live, sheet-formula-maintained running balance), and each row's
+  // Quantity input is capped at whatever remains.
+  let currentEntryType = '';
+  let stockOutMap    = {}; // "segment||product" → current Quantity from Current Stock sheet
+  let stockLoaded      = false;
+
+  // Tolerant of variants people actually put in the User sheet's
+  // Department column (e.g. "Stock Out Entry", "Opening Stock Entry",
+  // "Stock-In") — mirrors resolveEntryTab()'s keyword fallback in Code.gs.
+  // "sales" is kept as a legacy alias in case any older rows still say it.
+  function isStockOutEntry() {
+    const norm = currentEntryType.trim().toLowerCase();
+    return norm.indexOf('stock out') !== -1 || norm.indexOf('stockout') !== -1 || norm.indexOf('sales') !== -1;
+  }
+
+  function isOpeningStockEntry() {
+    return currentEntryType.trim().toLowerCase().indexOf('opening') !== -1;
+  }
+
+  function isKnownEntryType(val) {
+    const norm = (val || '').trim().toLowerCase();
+    if (!norm) return true;
+    return norm.indexOf('stock out') !== -1 ||
+           norm.indexOf('stockout') !== -1 ||
+           norm.indexOf('sales') !== -1 ||
+           norm.indexOf('opening') !== -1 ||
+           norm.indexOf('stock in') !== -1 ||
+           norm.indexOf('stockin') !== -1;
+  }
+
+  function stockKey(segment, product) {
+    return `${segment}||${product}`;
+  }
+
+  function availableStockFor(segment, product) {
+    const key = stockKey(segment, product);
+    return stockOutMap.hasOwnProperty(key) ? Math.max(0, stockOutMap[key]) : 0;
+  }
+
+  async function refreshStockOutStock() {
+    if (!isStockOutEntry()) return;
+    try {
+      // Always bypass the server's cache here — this decides which
+      // products a Stock Out user is even allowed to enter, so it must
+      // reflect Opening Stock/Stock In entries that were just saved
+      // moments ago, not a stale snapshot from before they were saved.
+      const json = await safeFetch(`${GAS_URL}?action=getCurrentStock&nocache=1`, 3);
+      stockOutMap = {};
+      (json.rows || []).forEach(r => {
+        stockOutMap[stockKey(r.segment, r.product)] = Number(r.quantity) || 0;
+      });
+      stockLoaded = true;
+    } catch (e) {
+      stockOutMap = {};
+      stockLoaded = false;
+      toast('Could not load current stock — ' + e.message, 'fail');
+    }
+    renderProductTable();
+  }
+
+  // ── Name → autofill Email + Entry Type (hidden) ───────
+  function onNameChange() {
+    const val  = document.getElementById('name').value;
+    const user = allUsers.find(u => u.name === val);
+    document.getElementById('email').value      = user ? user.email : '';
+    document.getElementById('department').value = user ? user.dept  : '';
+    currentEntryType = user ? (user.dept || '') : '';
+
+    const pill = document.getElementById('entryTypePill');
+    const warnBanner = document.getElementById('warnBanner');
+    const warnMsg    = document.getElementById('warnMsg');
+
+    if (currentEntryType) {
+      pill.textContent  = currentEntryType.toUpperCase();
+      pill.style.display = 'inline-block';
+    } else {
+      pill.style.display = 'none';
+    }
+
+    if (currentEntryType && !isKnownEntryType(currentEntryType)) {
+      warnMsg.textContent = `⚠ "${currentEntryType}" is not a recognized Entry Type (expected Opening Stock, Stock Out or Stock In). Ask your admin to fix this in the User sheet — submissions may not save correctly.`;
+      warnBanner.style.display = 'flex';
+    } else {
+      warnBanner.style.display = 'none';
+    }
+
+    const badge = document.getElementById('availHeader');
+    const refreshBadge = document.getElementById('stockRefreshBadge');
+    qtyMap = {};
+    if (isStockOutEntry()) {
+      refreshBadge.style.display = 'inline-block';
+      badge.style.display = 'table-cell';
+      refreshStockOutStock();
+    } else {
+      refreshBadge.style.display = 'none';
+      badge.style.display = 'none';
+      stockOutMap = {};
+      stockLoaded = false;
+      renderProductTable();
+    }
+
+    const uploadCard = document.getElementById('uploadCard');
+    if (isOpeningStockEntry()) {
+      uploadCard.style.display = '';
+    } else {
+      uploadCard.style.display = 'none';
+      document.getElementById('openingStockUpload').value = '';
+      document.getElementById('uploadStatus').textContent = '';
+    }
+  }
+
+  // ── Upload Current Stock export → prefill Opening Stock ────────────────
+  // Lets someone doing Opening Stock entry skip re-typing every product by
+  // hand: they upload the Excel they already downloaded from the
+  // dashboard's Current Stock table, and its "Current Stock" column
+  // (yesterday's closing balance) becomes today's Opening Stock quantity
+  // for each matching product. Nothing is saved until they review the
+  // prefilled table and press Submit like any other entry.
+  function normKey(s) { return String(s == null ? '' : s).trim().toLowerCase(); }
+
+  function handleOpeningStockUpload(event) {
+    const file = event.target.files && event.target.files[0];
+    const statusEl = document.getElementById('uploadStatus');
+    if (!file) return;
+
+    if (!isOpeningStockEntry()) {
+      statusEl.textContent = '⚠ Select an Opening Stock user first.';
+      event.target.value = '';
+      return;
+    }
+    if (!allProducts.length) {
+      statusEl.textContent = '⚠ Product list hasn\'t loaded yet — wait a moment and try again.';
+      event.target.value = '';
+      return;
+    }
+
+    statusEl.textContent = 'Reading file…';
+    const isCsv = /\.csv$/i.test(file.name) || file.type === 'text/csv';
+    const reader = new FileReader();
+    reader.onload = function (e) {
+      try {
+        // CSV is read as plain text (type:'string') rather than sniffed
+        // from raw bytes — reliable regardless of encoding quirks. Excel
+        // formats (.xlsx/.xls/.xlsm) are read as a binary workbook.
+        const wb = isCsv
+          ? XLSX.read(e.target.result, { type: 'string' })
+          : XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
+        const sheetName = wb.SheetNames.indexOf('Current Stock') !== -1 ? 'Current Stock' : wb.SheetNames[0];
+        const ws = wb.Sheets[sheetName];
+        const rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
+        applyOpeningStockUpload(rows);
+      } catch (err) {
+        statusEl.textContent = '⚠ Could not read file — ' + err.message;
+        toast('Could not read file', 'fail');
+      } finally {
+        event.target.value = ''; // allow re-uploading the same file name later
+      }
+    };
+    reader.onerror = function () {
+      statusEl.textContent = '⚠ Could not read file.';
+      event.target.value = '';
+    };
+    if (isCsv) reader.readAsText(file);
+    else       reader.readAsArrayBuffer(file);
+  }
+
+  function applyOpeningStockUpload(rows) {
+    const statusEl = document.getElementById('uploadStatus');
+    if (!rows || !rows.length) {
+      statusEl.textContent = '⚠ No rows found in the uploaded file.';
+      toast('File looks empty', 'fail');
+      return;
+    }
+
+    // Tolerant of the exact export headers ("Segment", "Product",
+    // "Current Stock") as well as older/renamed variants, in case the
+    // file was edited or came from an older export.
+    const headerKeys = Object.keys(rows[0]);
+    const findHeader = (...cands) => headerKeys.find(h => cands.indexOf(normKey(h)) !== -1);
+    const segH  = findHeader('segment');
+    const prodH = findHeader('product');
+    const qtyH  = findHeader('current stock', 'current qty', 'quantity', 'closing stock');
+
+    if (!prodH || !qtyH) {
+      statusEl.textContent = '⚠ Could not find "Product" and "Current Stock" columns in this file — make sure it\'s the Current Stock export.';
+      toast('Unrecognized file format', 'fail');
+      return;
+    }
+
+    let matched = 0, unmatched = 0, skippedZero = 0;
+    const unmatchedNames = [];
+
+    rows.forEach(row => {
+      const prod = String(row[prodH] || '').trim();
+      if (!prod) return;
+      const seg = segH ? String(row[segH] || '').trim() : '';
+      const qty = Number(row[qtyH]) || 0;
+
+      // Match against the live Product list by name (and segment, when the
+      // file has one) rather than trusting the file's own spelling — the
+      // Product sheet is the source of truth for what's a valid product.
+      let match = allProducts.find(p =>
+        normKey(p.product) === normKey(prod) && (!seg || normKey(p.segment) === normKey(seg))
+      );
+      if (!match) match = allProducts.find(p => normKey(p.product) === normKey(prod));
+
+      if (!match) { unmatched++; unmatchedNames.push(prod); return; }
+      if (qty <= 0) { skippedZero++; return; }
+
+      qtyMap[stockKey(match.segment, match.product)] = qty;
+      matched++;
+    });
+
+    renderProductTable();
+
+    let msg = `Prefilled ${matched} product${matched === 1 ? '' : 's'} from file`;
+    if (unmatched) msg += `, ${unmatched} not matched`;
+    if (skippedZero) msg += `, ${skippedZero} were zero`;
+    statusEl.textContent = msg + '. Review below, then Submit.';
+    toast(matched ? `Prefilled ${matched} products ✓` : 'No matching products found', matched ? 'success' : 'fail');
+    if (unmatched) console.warn('Opening Stock upload — products not found in Product sheet:', unmatchedNames);
+  }
+
+  // ── Product table (all products at once) ────────────────
+  let qtyMap = {}; // "segment||product" → quantity entered (persists across filtering/search)
+
+  function renderProductTable() {
+    const body       = document.getElementById('ptableBody');
+    const search     = document.getElementById('searchBox').value.trim().toLowerCase();
+    const segFilter  = document.getElementById('segmentFilter').value;
+    const nameChosen = !!document.getElementById('name').value;
+
+    if (!nameChosen) {
+      body.innerHTML = '<tr><td colspan="3"><div class="ptable-empty">Select your name to load products</div></td></tr>';
+      updateSummary();
+      return;
+    }
+
+    let list = allProducts.slice();
+    if (isStockOutEntry()) {
+      list = list.filter(p => availableStockFor(p.segment, p.product) > 0);
+    }
+    if (segFilter) list = list.filter(p => p.segment === segFilter);
+    if (search) list = list.filter(p => p.product.toLowerCase().includes(search) || p.segment.toLowerCase().includes(search));
+    list.sort((a, b) => a.segment.localeCompare(b.segment) || a.product.localeCompare(b.product));
+
+    if (!list.length) {
+      body.innerHTML = `<tr><td colspan="3"><div class="ptable-empty">${
+        isStockOutEntry() && !stockLoaded ? 'Loading current stock…' :
+        isStockOutEntry() ? 'No products with stock available' : 'No products found'
+      }</div></td></tr>`;
+      updateSummary();
+      return;
+    }
+
+    body.innerHTML = list.map(p => {
+      const key   = stockKey(p.segment, p.product);
+      const val   = qtyMap.hasOwnProperty(key) ? qtyMap[key] : '';
+      const avail = isStockOutEntry() ? availableStockFor(p.segment, p.product) : null;
+      const rowHasQty = Number(val) > 0;
+      const availCell = isStockOutEntry()
+        ? `<td class="p-avail${avail === 0 ? ' zero' : ''}">${avail}</td>`
+        : '';
+      const maxAttr = isStockOutEntry() ? `max="${avail}"` : '';
+      return `<tr class="${rowHasQty ? 'has-qty' : ''}" data-key="${escapeHtmlLocal(key)}">
+        <td>
+          <div class="p-name">${escapeHtmlLocal(p.product)}</div>
+          <div class="p-segment">${escapeHtmlLocal(p.segment)}</div>
+        </td>
+        ${availCell}
+        <td>
+          <input type="number" class="qty-input" min="0" ${maxAttr} placeholder="0"
+            value="${val}"
+            oninput="onQtyInput('${key.replace(/'/g,"\\'")}', this)"
+          />
+        </td>
+      </tr>`;
+    }).join('');
+
+    updateSummary();
+  }
+
+  function onQtyInput(key, inputEl) {
+    let raw = inputEl.value;
+    let num = raw === '' ? '' : Math.max(0, Number(raw) || 0);
+
+    if (isStockOutEntry()) {
+      const [segment, product] = key.split('||');
+      const avail = availableStockFor(segment, product);
+      if (num !== '' && num > avail) {
+        num = avail;
+        inputEl.value = num;
+        toast(`Only ${avail} in stock — capped`, 'fail');
+      }
+    }
+
+    if (num === '' || num === 0) {
+      delete qtyMap[key];
+      inputEl.closest('tr').classList.remove('has-qty');
+    } else {
+      qtyMap[key] = num;
+      inputEl.closest('tr').classList.add('has-qty');
+    }
+    updateSummary();
+  }
+
+  function updateSummary() {
+    const keys  = Object.keys(qtyMap);
+    const total = keys.reduce((sum, k) => sum + (Number(qtyMap[k]) || 0), 0);
+    document.getElementById('summaryCount').textContent = `${keys.length} product${keys.length === 1 ? '' : 's'} selected`;
+    document.getElementById('summaryTotal').textContent = total;
+    document.getElementById('submitBtn').disabled = keys.length === 0 || !document.getElementById('name').value;
+  }
+
+  // Posts ALL entries to the backend in one batch request. The server
+  // groups them by Entry Type (department) and appends each group to the
+  // matching tab (Opening Stock / Stock Out / Stock In).
+  function makeSubmissionId() {
+    // A stable id for one Submit click, reused across every retry of that
+    // same click. The server uses it to recognize "this is the same
+    // submission trying again" and returns the original result instead of
+    // saving the rows a second time — this is what stops a slow request
+    // that actually succeeded on the server from turning into 2-4 rows
+    // when the client times out/retries or the user resubmits.
+    if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+    return 'sub-' + Date.now() + '-' + Math.random().toString(36).slice(2);
+  }
+
+  async function postBatch(entries, retries = 3, onSlow) {
+    const submissionId = makeSubmissionId();
+    for (let attempt = 0; attempt < retries; attempt++) {
+      const controller = new AbortController();
+      // A plain fetch() never times out on its own — for a big batch or a
+      // slow sheet this could otherwise hang indefinitely. Give it a
+      // generous 2 minutes before giving up and letting the retry loop
+      // (or the user) try again, rather than spinning forever.
+      const killer = setTimeout(() => controller.abort(), 120000);
+      // Apps Script can genuinely take a while under load — a cold start,
+      // a big sheet, or another submission holding the lock while it
+      // finishes its own duplicate check. That's slow, not stuck, so
+      // surface it instead of leaving the button looking frozen.
+      const slowTimer = setTimeout(() => { if (onSlow) onSlow(attempt); }, 6000);
+      try {
+        const res = await fetch(GAS_URL, {
+          method:  'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body:    JSON.stringify({ action: 'batch', entries, submissionId }),
+          signal:  controller.signal
+        });
+        const text = await res.text();
+        const json = parseGasResponse(text);
+        if (!json.success) throw new Error(json.error || 'Server error');
+        return json;
+      } catch (err) {
+        if (attempt === retries - 1) {
+          throw err.name === 'AbortError' ? new Error('Server timed out — try again') : err;
+        }
+        await new Promise(r => setTimeout(r, 2000 + Math.random() * 2000));
+      } finally {
+        clearTimeout(killer);
+        clearTimeout(slowTimer);
+      }
+    }
+  }
+
+  document.getElementById('form').addEventListener('submit', async function (e) {
+    e.preventDefault();
+
+    const date = document.getElementById('date').value;
+    const name = document.getElementById('name').value;
+    const email = document.getElementById('email').value;
+    const entryType = document.getElementById('department').value;
+
+    if (!date) { toast('Required: Date', 'fail'); return; }
+    if (!name) { document.getElementById('name').focus(); toast('Required: Name', 'fail'); return; }
+
+    const keys = Object.keys(qtyMap);
+    if (!keys.length) {
+      toast('Enter a quantity for at least one product', 'fail');
+      return;
+    }
+
+    // Re-validate Stock Out caps at submit time in case stock changed
+    if (isStockOutEntry()) {
+      for (const key of keys) {
+        const [segment, product] = key.split('||');
+        const avail = availableStockFor(segment, product);
+        if ((Number(qtyMap[key]) || 0) > avail) {
+          toast(`Stock changed — ${product} now has only ${avail} available. Please review.`, 'fail');
+          renderProductTable();
+          return;
+        }
+      }
+    }
+
+    const entries = keys.map(key => {
+      const [segment, product] = key.split('||');
+      return {
+        date, name, email, entryType,
+        segment, product,
+        quantity: Number(qtyMap[key]) || 0
+      };
+    });
+
+    const btn = document.getElementById('submitBtn');
+    const lbl = document.getElementById('submitLabel');
+    btn.disabled = true;
+    lbl.textContent = `Submitting ${entries.length} item${entries.length === 1 ? '' : 's'}…`;
+
+    let slowStage = 0;
+    const onSlow = () => {
+      slowStage++;
+      lbl.textContent = slowStage === 1
+        ? 'Still saving… the sheet can take a bit longer when it\'s busy'
+        : 'Still trying — please keep this tab open';
+    };
+
+    try {
+      const result = await postBatch(entries, 3, onSlow);
+      const count = result.inserted != null ? result.inserted : entries.length;
+      qtyMap = {};
+      let msg = `${count} entr${count === 1 ? 'y' : 'ies'} submitted ✓`;
+      if (result.skippedDuplicates) msg += ` (${result.skippedDuplicates} duplicate skipped)`;
+      toast(msg, 'success');
+      if (isStockOutEntry()) await refreshStockOutStock(); // stock just moved — refresh it
+      else renderProductTable();
+    } catch (err) {
+      toast(`Submit failed — ${err.message}`, 'fail');
+    }
+
+    lbl.textContent = 'Submit Entry';
+    updateSummary();
+  });
+
+  // ── Reset All ──────────────────────────────────────────
+  function resetForm() {
+    if (Object.keys(qtyMap).length && !confirm('This will clear all entered quantities. Continue?')) {
+      return;
+    }
+    qtyMap = {};
+    document.getElementById('date').value       = new Date().toISOString().split('T')[0];
+    document.getElementById('name').value       = '';
+    document.getElementById('email').value      = '';
+    document.getElementById('department').value = '';
+    document.getElementById('searchBox').value  = '';
+    document.getElementById('segmentFilter').value = '';
+    currentEntryType = '';
+    stockOutMap    = {};
+    stockLoaded      = false;
+    document.getElementById('entryTypePill').style.display = 'none';
+    document.getElementById('stockRefreshBadge').style.display = 'none';
+    document.getElementById('availHeader').style.display = 'none';
+    document.getElementById('warnBanner').style.display = 'none';
+    document.getElementById('uploadCard').style.display = 'none';
+    document.getElementById('openingStockUpload').value = '';
+    document.getElementById('uploadStatus').textContent = '';
+    renderProductTable();
+  }
+
+  // ── Toast ──────────────────────────────────────────────
+  function toast(msg, type) {
+    const t = document.getElementById('toast');
+    document.getElementById('toastIcon').textContent = type === 'success' ? '✓' : '✕';
+    document.getElementById('toastMsg').textContent  = msg;
+    t.className = type;
+    void t.offsetWidth;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 3000);
+  }
+
+  init();
+</script>
+</body>
+</html>
